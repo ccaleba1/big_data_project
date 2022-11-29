@@ -51,7 +51,7 @@ dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size,
                                          shuffle=True, num_workers=workers)
 real_batch = next(iter(dataloader))
 
-num_epochs = 2
+num_epochs = 200
 lr = 0.001
 beta1 = 0.4
 nz = 3
@@ -90,7 +90,7 @@ for epoch in range(num_epochs):
         # Format batch
         real_cpu = data[0].to(device)
         b_size = real_cpu.size(0)
-        label = torch.full((b_size,), real_label, dtype=float32, device=device)
+        label = torch.full((b_size,), real_label, dtype=torch.float, device=device)
         # Forward pass real batch through D
         output = disc(real_cpu).view(-1)
         # Calculate loss on all-real batch
