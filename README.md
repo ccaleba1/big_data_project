@@ -3,8 +3,9 @@ Code for final project for Big Data course
 
 ### Instructions
 
-1. Run get_data.py to output a .pkl file which will be used for the main program.
+1. The main program is gan.py. This is where you can alter hyperparamenters (epochs, learning rate, beta, etc...) to fine tune the neural network training process.
 
-2. The main program is gan.py. This is where you can alter hyperparamenters (epochs, learning rate, & beta) to fine tune the neural network model.
+2. model.py contains the discriminator and generator NN models for review.
 
-3. model.py contains the discriminator and generator NN models for review.
+
+(Note: get_data.py is now obsolete)
