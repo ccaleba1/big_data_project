@@ -1,3 +1,5 @@
+import matplotlib
+matplotlib.use('Agg')
 import random
 import torch
 import torch.nn as nn
@@ -32,7 +34,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 ngpu = 2
 image_size = 64
-batch_size = 125
+batch_size = 100
 workers = 3
 dataroot = '~/big_data_project/data/1301/'
 
@@ -49,9 +51,9 @@ dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size,
                                          shuffle=True, num_workers=workers)
 real_batch = next(iter(dataloader))
 
-num_epochs = 10
-lr = 0.0002
-beta1 = 0.5
+num_epochs = 2
+lr = 0.001
+beta1 = 0.4
 nz = 3
 #train = torch.tensor(train).to(device)
 #train = torch.reshape(train, (train.shape[0], 3, 240, 320)).float()
@@ -63,7 +65,7 @@ gen.apply(weights_init)
 disc.apply(weights_init)
 
 crit = nn.BCELoss()
-noise = torch.randn(64, nz, 1, 1, device=device)
+const_noise = torch.randn(64, nz, 1, 1, device=device)
 real_label = 1.0
 fake_label = 0.0
 
@@ -88,7 +90,7 @@ for epoch in range(num_epochs):
         # Format batch
         real_cpu = data[0].to(device)
         b_size = real_cpu.size(0)
-        label = torch.full((b_size,), real_label, dtype=torch.float, device=device)
+        label = torch.full((b_size,), real_label, dtype=float32, device=device)
         # Forward pass real batch through D
         output = disc(real_cpu).view(-1)
         # Calculate loss on all-real batch
@@ -141,34 +143,41 @@ for epoch in range(num_epochs):
         D_losses.append(errD.item())
 
         # Check how the generator is doing by saving G's output on fixed_noise
-        if (iters % 500 == 0) or ((epoch == num_epochs-1) and (i == len(dataloader)-1)):
+        #if (iters % 500 == 0) or ((epoch == num_epochs-1) and (i == len(dataloader)-1)):
+        if (errG.item() < 2):
             with torch.no_grad():
-                fake = gen(noise).detach().cpu()
+                fake = gen(const_noise).detach().cpu()
             img_list.append(vutils.make_grid(fake, padding=2, normalize=True))
 
         iters += 1
 
+print("Saving Generator/Discriminator Loss Plot...")
+fig = plt.figure(figsize=(10,5))
+plt.plot(G_losses,label="G")
+plt.plot(D_losses,label="D")
+plt.xlabel("iterations")
+plt.ylabel("Loss")
+plt.legend()
+plt.savefig('Generator_Discriminator_Loss.png')
+plt.close(fig)
+print("Done")
 
+print("Saving Generator Output...")
+real_batch = next(iter(dataloader))
 
+# Plot the real images
+fig1 = plt.figure()
+plt.axis("off")
+plt.title("Real Images")
+img1 = np.transpose(vutils.make_grid(real_batch[0].to(device)[:64], padding=5, normalize=True).cpu(),(1,2,0))
+plt.imsave("real_images.png", img1)
+plt.close(fig1)
 
-
-
-
-
-
-
-
-
-
-# grid_img = torchvision.utils.make_grid(train[:10], nrow=5)
-#
-# plt.imshow(grid_img.permute(1, 2, 0))
-# plt.show()
-#
-# plt.figure(figsize=(8,8))
-# plt.axis("off")
-# plt.title("Training Images")
-# plt.imshow(np.transpose(vutils.make_grid(real_batch[:64], padding=2, normalize=True),(1,2,0)))
-# plt.show()
-# epochs = 10
-#1301, 240, 320, 3
+# Plot the fake images from the last epoch
+fig2 = plt.figure()
+plt.axis("off")
+plt.title("Fake Images")
+img2 = np.transpose(img_list[-1],(1,2,0))
+plt.imsave("fake_images.png", img2)
+plt.close(fig2)
+print("Done!")
