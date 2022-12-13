@@ -29,14 +29,11 @@ def weights_init(m):
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-#with open('data_array.pkl', 'rb') as f:
-#    train = pickle.load(f)
-
 ngpu = 2
 image_size = 64
-batch_size = 100
+batch_size = 75
 workers = 3
-dataroot = '~/big_data_project/data/1301/'
+dataroot = '~/git/big_data_project/data/' #location of data directory HERE
 
 dataset = dset.ImageFolder(root=dataroot,
                            transform=transforms.Compose([
@@ -51,12 +48,10 @@ dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size,
                                          shuffle=True, num_workers=workers)
 real_batch = next(iter(dataloader))
 
-num_epochs = 200
-lr = 0.001
-beta1 = 0.4
-nz = 3
-#train = torch.tensor(train).to(device)
-#train = torch.reshape(train, (train.shape[0], 3, 240, 320)).float()
+num_epochs = 30
+lr = 0.0002
+beta1 = 0.5
+nz = 100
 
 gen = Generator().float().to(device)
 disc = Discriminator().float().to(device)
@@ -65,10 +60,11 @@ gen.apply(weights_init)
 disc.apply(weights_init)
 
 crit = nn.BCELoss()
-const_noise = torch.randn(64, nz, 1, 1, device=device)
+const_noise = torch.randn(image_size, nz, 1, 1, device=device)
 real_label = 1.0
 fake_label = 0.0
 
+#optimizerD = optim.SGD(disc.parameters(), lr=0.1, momentum=0.9)
 optimizerD = optim.Adam(disc.parameters(), lr=lr, betas=(beta1, 0.999))
 optimizerG = optim.Adam(gen.parameters(), lr=lr, betas=(beta1, 0.999))
 
@@ -133,7 +129,7 @@ for epoch in range(num_epochs):
         optimizerG.step()
 
         # Output training stats
-        if i % 50 == 0:
+        if i % 500 == 0:
             print('[%d/%d][%d/%d]\tLoss_D: %.4f\tLoss_G: %.4f\tD(x): %.4f\tD(G(z)): %.4f / %.4f'
                   % (epoch, num_epochs, i, len(dataloader),
                      errD.item(), errG.item(), D_x, D_G_z1, D_G_z2))
@@ -143,13 +139,14 @@ for epoch in range(num_epochs):
         D_losses.append(errD.item())
 
         # Check how the generator is doing by saving G's output on fixed_noise
-        #if (iters % 500 == 0) or ((epoch == num_epochs-1) and (i == len(dataloader)-1)):
-        if (errG.item() < 2):
+        if (iters % 500 == 0) or (epoch == num_epochs-1):
             with torch.no_grad():
-                fake = gen(const_noise).detach().cpu()
-            img_list.append(vutils.make_grid(fake, padding=2, normalize=True))
-
+                fake2 = gen(const_noise).detach().cpu()
+            img_list.append(vutils.make_grid(fake2.detach().cpu(), padding=2, normalize=True))
         iters += 1
+
+print("Saving Generator Model...")
+torch.save(gen, "generator.tensor")
 
 print("Saving Generator/Discriminator Loss Plot...")
 fig = plt.figure(figsize=(10,5))
@@ -169,8 +166,8 @@ real_batch = next(iter(dataloader))
 fig1 = plt.figure()
 plt.axis("off")
 plt.title("Real Images")
-img1 = np.transpose(vutils.make_grid(real_batch[0].to(device)[:64], padding=5, normalize=True).cpu(),(1,2,0))
-plt.imsave("real_images.png", img1)
+img1 = np.transpose(vutils.make_grid(real_batch[0][:64], padding=5, normalize=True).cpu(),(1,2,0))
+plt.imsave("real_images.png", img1.cpu().numpy())
 plt.close(fig1)
 
 # Plot the fake images from the last epoch
@@ -178,6 +175,6 @@ fig2 = plt.figure()
 plt.axis("off")
 plt.title("Fake Images")
 img2 = np.transpose(img_list[-1],(1,2,0))
-plt.imsave("fake_images.png", img2)
+plt.imsave("fake_images.png", img2.cpu().numpy())
 plt.close(fig2)
 print("Done!")
